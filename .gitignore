@@ -2,3 +2,4 @@ chromedriver.exe
 __pycache__
 *.json
 *.csv
+*.xlsx

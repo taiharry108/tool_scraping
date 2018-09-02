@@ -8,11 +8,11 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.options import Options
 import re, math, json, time, os
 
-HOME_URL = 'https://www.gettoolsdirect.com.au/sidchrome-tools.html'
+HOME_URL = 'https://www.gettoolsdirect.com.au/milwaukee.html'
 
 TIMEOUT = 20
 JOIN = os.path.join
-PREFIX = "gettoolsdirect_sidchrome_"
+PREFIX = "gettoolsdirect_milwaukee_"
 PROD_P_LINK_F = JOIN('temp', PREFIX + "product_page_links.json")
 RESULT_F = JOIN('result', PREFIX + "result.json")
 FAILED_LINK_F = JOIN('temp', PREFIX + "failed_link.txt")
@@ -93,9 +93,15 @@ def get_product_pages(driver):
 	return [a.get_attribute('href') for a in a_tags]
 
 def get_product_details(driver):
-	product_details = {}	
-	product_details['Name'] = driver.find_element_by_id('listing-header').text
-	product_details['Details'] = driver.find_element_by_id('tab1').text
+	product_details = {}
+	try:
+		product_details['Name'] = driver.find_element_by_id('listing-header').text
+	except:
+		product_details['Name'] = ''
+	try:
+		product_details['Details'] = driver.find_element_by_id('tab1').text
+	except:
+		product_details['Details'] = ''	
 	try:
 		product_details['Price'] = driver.find_element_by_css_selector('#listing-top_addtocart_price > span').text
 	except:
@@ -107,9 +113,7 @@ def get_product_details(driver):
 	try:
 		product_details['Model'] = driver.find_element_by_css_selector("#listing-top_details-table > tbody > tr:nth-child(2) > td > span").text
 	except:
-		product_details['Model'] = ''
-	if product_details["Name"] == "":
-		raise
+		product_details['Model'] = ''	
 	return product_details
 
 def main():
