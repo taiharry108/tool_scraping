@@ -28,7 +28,6 @@ def get_chrome_driver():
 	chrome_options = Options()  
 	chrome_options.add_argument("--headless")
 	chrome_options.add_argument("--window-size=1920x1080")
-	# driver = webdriver.Chrome(executable_path="chromedriver.exe")
 	driver = webdriver.Chrome(executable_path="chromedriver.exe", chrome_options=chrome_options)
 	driver.maximize_window()
 	return driver

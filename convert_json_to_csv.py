@@ -1,7 +1,7 @@
 import pandas as pd
 
 def main():
-	prefix = "result/gettoolsdirect_sidchrome_"
+	prefix = "result/gettoolsdirect_milwaukee_"
 	filename = prefix + 'result.json'
 	df = pd.read_json(filename).T
 	print(df)
