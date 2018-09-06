@@ -8,15 +8,12 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.options import Options
 import re, math, json, time, os
 
-HOME_URL = 'https://www.gettoolsdirect.com.au/milwaukee.html'
-
-TIMEOUT = 20
+CONFIG_F = "config/gettoolsdirect_config.json"
 JOIN = os.path.join
-PREFIX = "gettoolsdirect_milwaukee_"
-PROD_P_LINK_F = JOIN('temp', PREFIX + "product_page_links.json")
-RESULT_F = JOIN('result', PREFIX + "result.json")
-FAILED_LINK_F = JOIN('temp', PREFIX + "failed_link.txt")
-DEBUG_F = JOIN('temp', "debug_list.json")
+
+def load_config():
+	with open(CONFIG_F) as config_f:
+		return json.load(config_f)
 
 def get_chrome_driver():
 	chrome_options = Options()  
@@ -27,10 +24,10 @@ def get_chrome_driver():
 	driver.maximize_window()
 	return driver
 
-def go_first_page(driver):
-	driver.get(HOME_URL + '#limit=200')
+def go_first_page(driver, home_url, timeout):
+	driver.get(home_url + '#limit=200')
 	try:
-		WebDriverWait(driver, TIMEOUT)\
+		WebDriverWait(driver, timeout)\
 			.until(EC.text_to_be_present_in_element(
 				(By.CSS_SELECTOR, '#categoryContainer_products_header > div.categoryContainer_toolbar.toolbar > div.paging_qty'),
 				'200'
@@ -41,16 +38,16 @@ def go_first_page(driver):
 		print("Loading took too much time!")	
 		return False
 
-def have_prod_page_links():
+def have_prod_page_links(prod_p_link_filename):
 	try:
-		with open(PROD_P_LINK_F) as prod_links_f:
+		with open(prod_p_link_filename) as prod_links_f:
 			return json.load(prod_links_f)
 	except:
 		return False
 
-def have_result_f():
+def have_result_f(result_filename):
 	try:
-		with open(RESULT_F) as result_f:
+		with open(result_filename) as result_f:
 			return json.load(result_f)
 	except:
 		return False
@@ -64,9 +61,8 @@ def check_has_next_page(driver):
 	except:
 		return False
 
-def get_prod_page_links(driver):
+def get_prod_page_links(driver, timeout, is_test):
 	product_page_links = []
-	debug_list = []
 	while True:
 		product_pages = get_product_pages(driver)
 		print(len(product_pages))
@@ -76,15 +72,15 @@ def get_prod_page_links(driver):
 			print("trying to get {}".format(next_page))
 			driver.get(next_page)
 			try:
-				WebDriverWait(driver, TIMEOUT).until(EC.element_to_be_clickable((By.CSS_SELECTOR, '#categoryContainer_subcategories_body > div:nth-child(1)')))
+				WebDriverWait(driver, timeout).until(EC.element_to_be_clickable((By.CSS_SELECTOR, '#categoryContainer_subcategories_body > div:nth-child(1)')))
 				print("Next page {} is ready!".format(next_page))
 			except TimeoutException:
 				print("Loading took too much time!")
+			if is_test:
+				break
 		else:
 			break
 
-	with open(DEBUG_F, 'w') as f:
-		json.dump(debug_list, f)
 	return product_page_links
 
 def get_product_pages(driver):
@@ -117,21 +113,38 @@ def get_product_details(driver):
 	return product_details
 
 def main():
-	result_dict = have_result_f()
+	config_dict = load_config()
+
+	home_url = config_dict["HOME_URL"]
+	timeout = config_dict["TIMEOUT"]
+	prefix = config_dict["PREFIX"]
+	is_test = config_dict["TEST"]
+
+	if is_test:
+		prefix += "test_"
+
+	prod_p_link_filename = JOIN('temp', prefix + "product_page_links.json")
+	result_filename = JOIN('result', prefix + "result.json")
+	failed_link_filename = JOIN('temp', prefix + "failed_link.txt")
+
+	result_dict = have_result_f(result_filename)
 	if not result_dict:
 		print("no prev result dict, going to create empty dict")
 		result_dict = {}
 	driver = get_chrome_driver()
 
-	if not go_first_page(driver):
+	if not go_first_page(driver, home_url, timeout):
 		return
 
-	product_page_links = have_prod_page_links()
+	product_page_links = have_prod_page_links(prod_p_link_filename)
 	if not product_page_links:
 		print("cannot find product page link file, going to get it")
-		product_page_links = get_prod_page_links(driver)
-		with open(PROD_P_LINK_F, 'w') as prod_links_f:
+		product_page_links = get_prod_page_links(driver, timeout, is_test)
+		with open(prod_p_link_filename, 'w') as prod_links_f:
 			json.dump(product_page_links, prod_links_f)
+
+	if is_test:
+		product_page_links = product_page_links[:15]
 
 	for page_link in product_page_links:
 		if page_link in result_dict.keys() and result_dict[page_link]["Name"] != "":
@@ -142,7 +155,7 @@ def main():
 			print("trying to go to {}".format(page_link))
 			driver.get(page_link)
 			try:
-				myElem = WebDriverWait(driver, TIMEOUT).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "ul.tabs")))
+				myElem = WebDriverWait(driver, timeout).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "ul.tabs")))
 				print("{} is ready!".format(page_link))
 				product_details = get_product_details(driver)
 				result_dict[page_link] = product_details
@@ -152,14 +165,14 @@ def main():
 					break
 			except TimeoutException:
 				print("Loading took too much time!")
-				with open(FAILED_LINK_F, 'a') as failed_link_f:
+				with open(failed_link_filename, 'a') as failed_link_f:
 					failed_link_f.write("{}\n".format(page_link))
 
 		if len(result_dict) % 10 == 0:
-			with open(RESULT_F, 'w') as result_f:
+			with open(result_filename, 'w') as result_f:
 				json.dump(result_dict, result_f)
 
-	with open(RESULT_F, 'w') as result_f:
+	with open(result_filename, 'w') as result_f:
 		json.dump(result_dict, result_f)
 
 if __name__ == '__main__':
