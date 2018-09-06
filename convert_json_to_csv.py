@@ -1,7 +1,8 @@
 import pandas as pd
+import sys
 
 def main():
-	prefix = "result/gettoolsdirect_milwaukee_"
+	prefix = "result/" + sys.argv[1]
 	filename = prefix + 'result.json'
 	df = pd.read_json(filename).T
 	print(df)
