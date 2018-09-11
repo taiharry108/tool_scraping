@@ -17,7 +17,7 @@ def load_config():
 
 def get_chrome_driver():
 	chrome_options = Options()  
-	# chrome_options.add_argument("--headless")
+	chrome_options.add_argument("--headless")
 	chrome_options.add_argument("--window-size=1920x1080")
 	# driver = webdriver.Chrome(executable_path="chromedriver.exe")
 	driver = webdriver.Chrome(executable_path="chromedriver.exe", chrome_options=chrome_options)
@@ -103,12 +103,15 @@ def get_product_details(driver):
 	except:
 		product_details['Price'] = ''
 	try:
-		product_details['Brand'] = driver.find_element_by_css_selector("#listing-top_details-table > tbody > tr:nth-child(1) > td > span").text
+		trs = driver.find_elements_by_css_selector("#listing-top_details-table > tbody > tr")
+		for tr in trs:
+			th_text = tr.find_element_by_tag_name('th').text
+			if th_text.startswith("Brand"):
+				product_details['Brand'] = tr.find_element_by_tag_name("td").text
+			elif th_text.startswith("Model"):
+				product_details['Model'] = tr.find_element_by_tag_name("td").text
 	except:
 		product_details['Brand'] = ''
-	try:
-		product_details['Model'] = driver.find_element_by_css_selector("#listing-top_details-table > tbody > tr:nth-child(2) > td > span").text
-	except:
 		product_details['Model'] = ''	
 	return product_details
 
